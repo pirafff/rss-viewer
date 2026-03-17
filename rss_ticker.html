@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>RSS Viewer Pro</title>
+  <style>
+    :root {
+      --bg: #0b0b0b;
+      --panel: #b7b7b7;
+      --panel-2: #a9a9a9;
+      --text: #111;
+      --subtext: rgba(0, 0, 0, 0.68);
+      --muted: rgba(0, 0, 0, 0.45);
+      --border: rgba(0, 0, 0, 0.78);
+      --white: rgba(255,255,255,0.9);
+      --shadow: rgba(0,0,0,0.16);
+      --accent: #1f1f1f;
+
+      --radius: 40px;
+      --inner-radius: 28px;
+
+      --page-padding: 28px;
+      --title-size: 30px;
+      --headline-size: 34px;
+      --summary-size: 21px;
+      --meta-size: 16px;
+      --switch-seconds: 12;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      font-family: "Hiragino Sans", "Yu Gothic UI", "Segoe UI", sans-serif;
+    }
+
+    body {
+      padding: 10px;
+    }
+
+    .app {
+      width: 100%;
+      height: 100%;
+      background:
+        linear-gradient(180deg, #bdbdbd 0%, #aaaaaa 100%);
+      border-radius: var(--radius);
+      padding: var(--page-padding);
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 28px;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.24),
+        0 8px 30px rgba(0,0,0,0.22);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .app::before,
+    .app::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      filter: blur(18px);
+      pointer-events: none;
+      opacity: 0.18;
+    }
+
+    .app::before {
+      width: 220px;
+      height: 220px;
+      right: -40px;
+      top: -30px;
+      background: rgba(255,255,255,0.65);
+    }
+
+    .app::after {
+      width: 260px;
+      height: 260px;
+      left: -80px;
+      bottom: -80px;
+      background: rgba(255,255,255,0.32);
+    }
+
+    .left, .right {
+      min-width: 0;
+      min-height: 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .left {
+      display: flex;
+      flex-direction: column;
+      padding: 8px 6px 8px 10px;
+      min-height: 0;
+    }
+
+    .logo-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .logo {
+      font-size: var(--title-size);
+      font-weight: 900;
+      color: var(--text);
+      letter-spacing: 0.04em;
+      opacity:0.4;
+    }
+
+    .mini-status {
+      font-size: 13px;
+      color: var(--muted);
+      background: rgba(255,255,255,0.22);
+      border-radius: 999px;
+      padding: 6px 12px;
+      white-space: nowrap;
+      max-width: 55%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .news-card {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 0;
+      gap: 22px;
+    }
+
+    .headline {
+      font-size: var(--headline-size);
+      line-height: 1.35;
+      font-weight: 900;
+      color: var(--text);
+      padding-bottom: 18px;
+      border-bottom: 3px solid rgba(0, 0, 0, 0.42);
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      min-height: 4.25em;
+      text-wrap: pretty;
+    }
+
+    .summary {
+      font-size: var(--summary-size);
+      line-height: 1.75;
+      color: var(--subtext);
+      display: -webkit-box;
+      -webkit-line-clamp: 7;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      min-height: 12.2em;
+      padding-right: 10px;
+      text-wrap: pretty;
+      word-break: break-word;
+    }
+
+    .url-box {
+      font-size: 14px;
+      color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      background: rgba(255,255,255,0.18);
+      border-radius: 14px;
+      padding: 10px 12px;
+    }
+
+    .meta {
+      margin-top: auto;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+      font-size: var(--meta-size);
+      color: var(--subtext);
+      border-top: 2px solid rgba(0,0,0,0.18);
+      padding-top: 14px;
+    }
+
+    .source {
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .clock {
+      margin-left: auto;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .right {
+      display: flex;
+      align-items: stretch;
+      justify-content: stretch;
+    }
+
+    .image-box {
+      width: 100%;
+      height: 100%;
+      border: 5px solid var(--border);
+      border-radius: var(--inner-radius);
+      overflow: hidden;
+      position: relative;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(255,255,255,0.22), transparent 26%),
+        radial-gradient(circle at 80% 75%, rgba(255,255,255,0.14), transparent 24%),
+        linear-gradient(145deg, #b7b7b7 0%, #9f9f9f 100%);
+      box-shadow: 0 10px 28px var(--shadow);
+    }
+
+    .image-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      background: #b3b3b3;
+    }
+
+    .image-overlay {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(180deg, rgba(0,0,0,0.03) 0%, rgba(0,0,0,0.18) 100%);
+      pointer-events: none;
+    }
+
+    .image-placeholder {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 14px;
+      color: rgba(0,0,0,0.58);
+      text-align: center;
+      padding: 30px;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.04)),
+        repeating-linear-gradient(
+          -45deg,
+          rgba(255,255,255,0.08) 0px,
+          rgba(255,255,255,0.08) 14px,
+          rgba(255,255,255,0.02) 14px,
+          rgba(255,255,255,0.02) 28px
+        );
+    }
+
+    .ph-icon {
+      width: 110px;
+      height: 110px;
+      border: 4px solid rgba(0,0,0,0.28);
+      border-radius: 24px;
+      position: relative;
+      background: rgba(255,255,255,0.12);
+    }
+
+    .ph-icon::before {
+      content: "";
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      bottom: 16px;
+      height: 30px;
+      border-radius: 999px 999px 12px 12px;
+      background: rgba(0,0,0,0.18);
+      transform: skewX(-12deg);
+    }
+
+    .ph-icon::after {
+      content: "";
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.22);
+    }
+
+    .ph-title {
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+    }
+
+    .ph-sub {
+      font-size: 16px;
+      max-width: 24em;
+      line-height: 1.7;
+    }
+
+    .status {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      font-size: 13px;
+      color: rgba(0,0,0,0.55);
+      background: rgba(255,255,255,0.18);
+      padding: 7px 11px;
+      border-radius: 999px;
+      backdrop-filter: blur(6px);
+      z-index: 3;
+      max-width: calc(100% - 32px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .pager {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 16px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      z-index: 3;
+    }
+
+    .bar {
+      height: 6px;
+      flex: 1;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.25);
+      box-shadow: inset 0 1px 1px rgba(0,0,0,0.12);
+    }
+
+    .bar > span {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: rgba(255,255,255,0.92);
+      transition: width 0.1s linear;
+    }
+
+    .fade {
+      animation: fadeInCard 0.45s ease;
+    }
+
+    @keyframes fadeInCard {
+      from {
+        opacity: 0.45;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .controls {
+      position: absolute;
+      left: 18px;
+      top: 14px;
+      display: flex;
+      gap: 8px;
+      z-index: 3;
+    }
+
+    .control-btn {
+      border: 0;
+      border-radius: 999px;
+      padding: 7px 11px;
+      font-size: 13px;
+      font-weight: 700;
+      background: rgba(255,255,255,0.22);
+      color: rgba(0,0,0,0.72);
+      cursor: pointer;
+    }
+
+    .control-btn:active {
+      transform: scale(0.98);
+    }
+
+    @media (max-width: 980px) {
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 0.9fr;
+      }
+
+      .headline {
+        font-size: 28px;
+      }
+
+      .summary {
+        font-size: 18px;
+        -webkit-line-clamp: 5;
+        min-height: 8.8em;
+      }
+
+      .ph-title {
+        font-size: 22px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <section class="left">
+      <div class="logo-row">
+        <div class="logo"><img src="./logo.png" style="width: 35px;">NewsRSS</div>
+        <div class="mini-status" id="miniStatus">初期化中...</div>
+      </div>
+
+      <div class="news-card" id="newsCard">
+        <div class="headline" id="headline">読み込み中...</div>
+        <div class="summary" id="summary">フィードを取得しています。</div>
+        <div class="url-box" id="urlBox">---</div>
+
+        <div class="meta">
+          <span class="source" id="source">---</span>
+          <span id="dateText">---</span>
+          <span class="clock" id="clock">--:--:--</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="right">
+      <div class="image-box">
+        <div class="controls">
+          <button class="control-btn" id="prevBtn">◀ 前へ</button>
+          <button class="control-btn" id="nextBtn">次へ ▶</button>
+        </div>
+
+        <div class="status" id="status" style="display:none;">起動中...</div>
+
+        <img id="newsImage" alt="news image" style="display:none;" />
+        <div class="image-overlay"></div>
+
+        <div class="image-placeholder" id="imagePlaceholder">
+          <div class="ph-icon"></div>
+          <div class="ph-title">NO IMAGE</div>
+          <div class="ph-sub" id="phSub">
+            画像がない記事です。見出しと要約をゆっくり読めるようにしています。
+          </div>
+        </div>
+
+        <div class="pager" id="pager"></div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // =========================================================
+    // 設定
+    // =========================================================
+    const FEEDS = [
+      { name: "NHK主要", url: "https://www3.nhk.or.jp/rss/news/cat0.xml" },
+      { name: "ITmedia News", url: "https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml" },
+      { name: "BBC World", url: "https://feeds.bbci.co.uk/news/world/rss.xml" },
+      { name: "日経 経済(RDF)", url: "https://assets.wor.jp/rss/rdf/nikkei/economy.rdf" },
+      { name: "NHK国際", url: "https://www3.nhk.or.jp/rss/news/cat6.xml" },
+      { name: "日経 主要(RDF)", url: "https://assets.wor.jp/rss/rdf/nikkei/news.rdf" },
+      
+    ];
+
+    const MAX_ITEMS_PER_FEED = 6;
+    const REFRESH_MINUTES = 10;
+    const SWITCH_SECONDS = 12;
+    const MAX_TOTAL_ITEMS = 24;
+
+    // 1) rss2jsonでJSON取得を試す
+    function rss2jsonUrl(feedUrl) {
+      return "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(feedUrl);
+    }
+
+    // 2) ダメならAll Origins経由で生XMLを取得して自前パース
+    function allOriginsRawUrl(feedUrl) {
+      return "https://api.allorigins.win/raw?url=" + encodeURIComponent(feedUrl);
+    }
+
+    const headlineEl = document.getElementById("headline");
+    const summaryEl = document.getElementById("summary");
+    const sourceEl = document.getElementById("source");
+    const dateTextEl = document.getElementById("dateText");
+    const clockEl = document.getElementById("clock");
+    const statusEl = document.getElementById("status");
+    const miniStatusEl = document.getElementById("miniStatus");
+    const newsImageEl = document.getElementById("newsImage");
+    const imagePlaceholderEl = document.getElementById("imagePlaceholder");
+    const pagerEl = document.getElementById("pager");
+    const newsCardEl = document.getElementById("newsCard");
+    const urlBoxEl = document.getElementById("urlBox");
+    const phSubEl = document.getElementById("phSub");
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
+
+    let items = [];
+    let currentIndex = 0;
+    let switchTimer = null;
+    let progressTimer = null;
+    let progressPercent = 0;
+    let paused = false;
+
+    function setStatus(text, isError = false) {
+      //statusEl.textContent = text;
+      miniStatusEl.textContent = text;
+      statusEl.style.color = isError ? "#7a0000" : "rgba(0,0,0,0.55)";
+      statusEl.style.background = isError
+        ? "rgba(255, 180, 180, 0.55)"
+        : "rgba(255,255,255,0.18)";
+    }
+
+    function updateClock() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, "0");
+      const d = String(now.getDate()).padStart(2, "0");
+      const hh = String(now.getHours()).padStart(2, "0");
+      const mm = String(now.getMinutes()).padStart(2, "0");
+      const ss = String(now.getSeconds()).padStart(2, "0");
+      clockEl.textContent = `${y}/${m}/${d} ${hh}:${mm}:${ss}`;
+    }
+
+    function stripHtml(html) {
+      const div = document.createElement("div");
+      div.innerHTML = html || "";
+      return (div.textContent || div.innerText || "").replace(/\s+/g, " ").trim();
+    }
+
+    function decodeHtml(str) {
+      const txt = document.createElement("textarea");
+      txt.innerHTML = str || "";
+      return txt.value;
+    }
+
+    function textOrEmpty(node, selectors) {
+      for (const selector of selectors) {
+        const el = node.querySelector(selector);
+        if (el && el.textContent) {
+          return el.textContent.trim();
+        }
+      }
+      return "";
+    }
+
+    function attrOrEmpty(node, selector, attr) {
+      const el = node.querySelector(selector);
+      if (!el) return "";
+      return (el.getAttribute(attr) || "").trim();
+    }
+
+    function pickImageFromHtml(html) {
+      if (!html) return "";
+      const match = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+      return match ? match[1] : "";
+    }
+
+    function normalizeItem(base) {
+      return {
+        source: base.source || "Feed",
+        title: (base.title || "(no title)").trim(),
+        summary: (base.summary || "概要はありません。").trim(),
+        link: (base.link || "").trim(),
+        pubDate: (base.pubDate || "").trim(),
+        image: (base.image || "").trim()
+      };
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return "---";
+      const d = new Date(dateStr);
+      if (Number.isNaN(d.getTime())) return dateStr;
+      return d.toLocaleString("ja-JP");
+    }
+
+    function sortByDateDesc(arr) {
+      arr.sort((a, b) => {
+        const da = new Date(a.pubDate || 0).getTime();
+        const db = new Date(b.pubDate || 0).getTime();
+        return db - da;
+      });
+      return arr;
+    }
+
+    async function fetchViaRss2Json(feed) {
+      const res = await fetch(rss2jsonUrl(feed.url), { cache: "no-store" });
+      if (!res.ok) throw new Error(`rss2json NG: ${feed.name} (${res.status})`);
+
+      const data = await res.json();
+      if (data.status !== "ok" || !Array.isArray(data.items)) {
+        throw new Error(`rss2json parse NG: ${feed.name}`);
+      }
+
+      return data.items.slice(0, MAX_ITEMS_PER_FEED).map(item => {
+        const rawSummary = item.description || item.content || item.content_encoded || "";
+        let image = "";
+
+        if (item.thumbnail) image = item.thumbnail;
+        if (!image && Array.isArray(item.enclosure)) {
+          const enc = item.enclosure.find(x => x.link);
+          if (enc && enc.link) image = enc.link;
+        }
+        if (!image) image = pickImageFromHtml(rawSummary);
+
+        return normalizeItem({
+          source: feed.name,
+          title: decodeHtml(item.title || ""),
+          summary: stripHtml(rawSummary),
+          link: item.link || "",
+          pubDate: item.pubDate || "",
+          image
+        });
+      });
+    }
+
+    function parseFeedXml(xmlText, feedName) {
+      const doc = new DOMParser().parseFromString(xmlText, "application/xml");
+      const parserError = doc.querySelector("parsererror");
+      if (parserError) {
+        throw new Error(`XML parse NG: ${feedName}`);
+      }
+
+      const root = doc.documentElement;
+      const rootName = (root.localName || root.nodeName || "").toLowerCase();
+      let entries = [];
+
+      // RSS 2.0 / RSS系
+      if (rootName === "rss" || root.querySelector("channel > item")) {
+        const items = Array.from(doc.querySelectorAll("channel > item"));
+        entries = items.map(item => {
+          const title = textOrEmpty(item, ["title"]);
+          const link = textOrEmpty(item, ["link"]);
+          const pubDate = textOrEmpty(item, ["pubDate", "date", "dc\\:date"]);
+          const description = textOrEmpty(item, ["description", "content\\:encoded"]);
+          let image = "";
+
+          image =
+            attrOrEmpty(item, "enclosure[url][type^='image/']", "url") ||
+            attrOrEmpty(item, "media\\:thumbnail, thumbnail", "url") ||
+            attrOrEmpty(item, "media\\:content[medium='image']", "url") ||
+            pickImageFromHtml(description);
+
+          return normalizeItem({
+            source: feedName,
+            title,
+            summary: stripHtml(description),
+            link,
+            pubDate,
+            image
+          });
+        });
+      }
+      // RDF / RSS 1.0
+      else if (rootName === "rdf" || rootName === "rdf:rdf" || doc.querySelector("item")) {
+        const items = Array.from(doc.querySelectorAll("item"));
+        entries = items.map(item => {
+          const title = textOrEmpty(item, ["title"]);
+          const link =
+            textOrEmpty(item, ["link"]) ||
+            item.getAttribute("rdf:about") ||
+            item.getAttribute("about") ||
+            "";
+          const pubDate = textOrEmpty(item, ["dc\\:date", "date"]);
+          const description = textOrEmpty(item, ["description", "content\\:encoded"]);
+          let image = "";
+
+          image =
+            attrOrEmpty(item, "media\\:thumbnail, thumbnail", "url") ||
+            attrOrEmpty(item, "media\\:content[medium='image']", "url") ||
+            pickImageFromHtml(description);
+
+          return normalizeItem({
+            source: feedName,
+            title,
+            summary: stripHtml(description),
+            link,
+            pubDate,
+            image
+          });
+        });
+      }
+      // Atom
+      else if (rootName === "feed" || doc.querySelector("entry")) {
+        const items = Array.from(doc.querySelectorAll("entry"));
+        entries = items.map(item => {
+          const title = textOrEmpty(item, ["title"]);
+          const summary = textOrEmpty(item, ["summary", "content"]);
+          const pubDate = textOrEmpty(item, ["updated", "published"]);
+          let link = "";
+          let image = "";
+
+          const altLink = item.querySelector("link[rel='alternate']");
+          const anyLink = item.querySelector("link[href]");
+          link = (altLink && altLink.getAttribute("href")) ||
+                 (anyLink && anyLink.getAttribute("href")) ||
+                 "";
+
+          image =
+            attrOrEmpty(item, "media\\:thumbnail, thumbnail", "url") ||
+            attrOrEmpty(item, "media\\:content[medium='image']", "url") ||
+            pickImageFromHtml(summary);
+
+          return normalizeItem({
+            source: feedName,
+            title,
+            summary: stripHtml(summary),
+            link,
+            pubDate,
+            image
+          });
+        });
+      }
+
+      return entries
+        .filter(x => x.title)
+        .slice(0, MAX_ITEMS_PER_FEED);
+    }
+
+    async function fetchViaDirectXml(feed) {
+      const res = await fetch(allOriginsRawUrl(feed.url), { cache: "no-store" });
+      if (!res.ok) throw new Error(`XML取得NG: ${feed.name} (${res.status})`);
+      const xmlText = await res.text();
+      return parseFeedXml(xmlText, feed.name);
+    }
+
+    async function fetchFeed(feed) {
+      try {
+        return await fetchViaRss2Json(feed);
+      } catch (e1) {
+        console.warn("rss2json failed:", feed.name, e1);
+        try {
+          return await fetchViaDirectXml(feed);
+        } catch (e2) {
+          console.warn("direct xml failed:", feed.name, e2);
+          throw new Error(`${feed.name} の取得に失敗`);
+        }
+      }
+    }
+
+    function renderPager() {
+      pagerEl.innerHTML = "";
+      items.forEach((_, idx) => {
+        const bar = document.createElement("div");
+        bar.className = "bar";
+        const inner = document.createElement("span");
+        inner.style.width = idx < currentIndex ? "100%" : "0%";
+        bar.appendChild(inner);
+        pagerEl.appendChild(bar);
+      });
+    }
+
+    function updatePagerProgress() {
+      const spans = pagerEl.querySelectorAll(".bar > span");
+      spans.forEach((span, idx) => {
+        if (idx < currentIndex) {
+          span.style.width = "100%";
+        } else if (idx === currentIndex) {
+          span.style.width = `${progressPercent}%`;
+        } else {
+          span.style.width = "0%";
+        }
+      });
+    }
+
+    function setPlaceholderText(item) {
+      const name = item?.source || "Feed";
+      phSubEl.textContent = `${name} の記事です。画像はありませんが、見出しと要約を大きめに表示しています。`;
+    }
+
+    function showItem(index) {
+      if (!items.length) return;
+
+      currentIndex = ((index % items.length) + items.length) % items.length;
+      const item = items[currentIndex];
+
+      newsCardEl.classList.remove("fade");
+      void newsCardEl.offsetWidth;
+      newsCardEl.classList.add("fade");
+
+      headlineEl.textContent = item.title || "(no title)";
+      summaryEl.textContent = item.summary || "概要はありません。";
+      sourceEl.textContent = `[${item.source}]`;
+      dateTextEl.textContent = formatDate(item.pubDate);
+      urlBoxEl.textContent = item.link || "リンクなし";
+
+      if (item.image) {
+        newsImageEl.src = item.image;
+        newsImageEl.style.display = "block";
+        imagePlaceholderEl.style.display = "none";
+      } else {
+        newsImageEl.removeAttribute("src");
+        newsImageEl.style.display = "none";
+        imagePlaceholderEl.style.display = "flex";
+        setPlaceholderText(item);
+      }
+
+      renderPager();
+      progressPercent = 0;
+      updatePagerProgress();
+    }
+
+    function nextItem() {
+      if (!items.length) return;
+      currentIndex = (currentIndex + 1) % items.length;
+      showItem(currentIndex);
+    }
+
+    function prevItem() {
+      if (!items.length) return;
+      currentIndex = (currentIndex - 1 + items.length) % items.length;
+      showItem(currentIndex);
+    }
+
+    function stopRotation() {
+      if (switchTimer) clearInterval(switchTimer);
+      if (progressTimer) clearInterval(progressTimer);
+      switchTimer = null;
+      progressTimer = null;
+    }
+
+    function startRotation() {
+      stopRotation();
+      if (!items.length || paused) return;
+
+      showItem(currentIndex);
+
+      switchTimer = setInterval(() => {
+        nextItem();
+      }, SWITCH_SECONDS * 1000);
+
+      progressTimer = setInterval(() => {
+        progressPercent += 100 / (SWITCH_SECONDS * 10);
+        if (progressPercent > 100) progressPercent = 100;
+        updatePagerProgress();
+      }, 100);
+    }
+
+    async function loadFeeds() {
+      setStatus("RSS取得中...");
+      try {
+        const results = await Promise.allSettled(FEEDS.map(fetchFeed));
+        let merged = [];
+        let okCount = 0;
+        let ngCount = 0;
+
+        results.forEach(result => {
+          if (result.status === "fulfilled") {
+            merged = merged.concat(result.value);
+            okCount++;
+          } else {
+            ngCount++;
+            console.error(result.reason);
+          }
+        });
+
+        merged = sortByDateDesc(merged)
+          .filter((item, idx, arr) => {
+            const key = `${item.title}|${item.link}`;
+            return idx === arr.findIndex(x => `${x.title}|${x.link}` === key);
+          })
+          .slice(0, MAX_TOTAL_ITEMS);
+
+        items = merged;
+
+        if (!items.length) {
+          headlineEl.textContent = "ニュースを取得できませんでした";
+          summaryEl.textContent = "CORS、RSS変換API、または元フィードの応答に問題がある可能性があります。";
+          sourceEl.textContent = "---";
+          dateTextEl.textContent = "---";
+          urlBoxEl.textContent = "---";
+          newsImageEl.style.display = "none";
+          imagePlaceholderEl.style.display = "flex";
+          phSubEl.textContent = "フィード取得に失敗しました。時間をおいて再読み込みしてください。";
+          pagerEl.innerHTML = "";
+          setStatus("取得失敗", true);
+          stopRotation();
+          return;
+        }
+
+        if (currentIndex >= items.length) currentIndex = 0;
+
+        setStatus(`更新OK / 成功 ${okCount} / 失敗 ${ngCount} / 記事 ${items.length}`);
+        startRotation();
+      } catch (err) {
+        console.error(err);
+        setStatus(err.message || "エラー", true);
+        headlineEl.textContent = "エラーが発生しました";
+        summaryEl.textContent = "時間をおいて再読み込みしてください。";
+        sourceEl.textContent = "---";
+        dateTextEl.textContent = "---";
+        urlBoxEl.textContent = "---";
+        newsImageEl.style.display = "none";
+        imagePlaceholderEl.style.display = "flex";
+        phSubEl.textContent = "読込エラーです。";
+        pagerEl.innerHTML = "";
+        stopRotation();
+      }
+    }
+
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    loadFeeds();
+    setInterval(loadFeeds, REFRESH_MINUTES * 60 * 1000);
+
+    prevBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      prevItem();
+      if (!paused) startRotation();
+    });
+
+    nextBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      nextItem();
+      if (!paused) startRotation();
+    });
+
+    document.body.addEventListener("click", (e) => {
+      if (e.target.closest("button")) return;
+      nextItem();
+      if (!paused) startRotation();
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        stopRotation();
+      } else {
+        startRotation();
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight") {
+        nextItem();
+        if (!paused) startRotation();
+      } else if (e.key === "ArrowLeft") {
+        prevItem();
+        if (!paused) startRotation();
+      } else if (e.key === " ") {
+        e.preventDefault();
+        paused = !paused;
+        setStatus(paused ? "一時停止中" : "再生中");
+        if (paused) {
+          stopRotation();
+        } else {
+          startRotation();
+        }
+      }
+    });
+  </script>
+</body>
+</html>
